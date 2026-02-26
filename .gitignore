@@ -1,0 +1,39 @@
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual Environment ──────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Environment Variables (secrets!) ─────────────────────────
+.env
+
+# ── SQLite Database (local dev only) ─────────────────────────
+*.db
+*.sqlite3
+
+# ── IDE / Editor ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Node / Angular (for future frontend) ─────────────────────
+node_modules/
+.angular/
+dist/
+.env.local
+
+# ── Misc ─────────────────────────────────────────────────────
+*.log
+*.bak
+*.tmp
