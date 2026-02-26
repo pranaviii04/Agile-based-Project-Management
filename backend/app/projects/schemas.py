@@ -2,15 +2,14 @@
 Project Schemas (Pydantic)
 --------------------------
 Request and response schemas for the projects module.
-Pydantic handles all validation automatically.
+Pydantic validates everything automatically.
 """
 
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
-
-from app.projects.models import ProjectStatus
 
 
 # ── Request Schemas ───────────────────────────────────────────
@@ -18,16 +17,14 @@ from app.projects.models import ProjectStatus
 
 class ProjectCreate(BaseModel):
     """Schema for creating a new project."""
-    name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    status: ProjectStatus = ProjectStatus.PLANNING
+    name: str = Field(..., min_length=1, max_length=255, examples=["Sprint Board Alpha"])
+    description: Optional[str] = Field(None, examples=["An agile project for team collaboration"])
 
 
 class ProjectUpdate(BaseModel):
-    """Schema for updating an existing project (all fields optional)."""
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    status: Optional[ProjectStatus] = None
+    """Schema for updating an existing project. All fields are optional."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255, examples=["Renamed Project"])
+    description: Optional[str] = Field(None, examples=["Updated description"])
 
 
 # ── Response Schemas ──────────────────────────────────────────
@@ -35,13 +32,16 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(BaseModel):
     """Schema returned when reading a project."""
-    id: int
+    id: UUID
     name: str
     description: Optional[str]
-    owner_id: int
-    status: ProjectStatus
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ProjectDeleteResponse(BaseModel):
+    """Schema returned after deleting a project."""
+    message: str

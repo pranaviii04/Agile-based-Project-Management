@@ -1,49 +1,27 @@
 """
-Project Models
+Project Model
 --------------
 SQLAlchemy ORM model for the `projects` table.
 
 A Project is the top-level container that holds sprints and tasks.
-Each project is owned by a user and tracks its lifecycle status.
+Uses UUID as the primary key for better distributed-system compatibility.
 """
 
-import enum
+import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Text,
-    DateTime,
-    Enum,
-    ForeignKey,
-)
+from sqlalchemy import Column, String, Text, DateTime, Uuid
 from sqlalchemy.orm import relationship
 
 from app.database import Base
 
 
-class ProjectStatus(str, enum.Enum):
-    """Lifecycle status of a project."""
-    PLANNING = "planning"
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    ARCHIVED = "archived"
-
-
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(
-        Enum(ProjectStatus, native_enum=False),
-        nullable=False,
-        default=ProjectStatus.PLANNING,
-    )
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -52,8 +30,7 @@ class Project(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────
-    owner = relationship("User", back_populates="projects")
     sprints = relationship("Sprint", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Project {self.name!r} ({self.status.value})>"
+        return f"<Project {self.name!r} (id={self.id})>"

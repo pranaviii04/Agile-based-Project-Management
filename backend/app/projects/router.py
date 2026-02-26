@@ -3,23 +3,27 @@ Projects Router
 ---------------
 API endpoints for project management.
 
-Endpoints (scaffolded — handlers delegate to service layer):
-  POST   /projects/          → create a new project
-  GET    /projects/          → list all projects
-  GET    /projects/{id}      → get a single project
-  PUT    /projects/{id}      → update a project
-  DELETE /projects/{id}      → delete a project
-
-NOTE: Route handlers are scaffolded but NOT implemented yet.
+Endpoints:
+  POST   /projects/              → create a new project
+  GET    /projects/              → list all projects (paginated)
+  GET    /projects/{project_id}  → get a single project by UUID
+  PUT    /projects/{project_id}  → update a project (partial)
+  DELETE /projects/{project_id}  → delete a project
 """
 
-from fastapi import APIRouter, Depends, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
-from app.models.user import User
-from app.projects.schemas import ProjectCreate, ProjectUpdate, ProjectResponse
+from app.projects.schemas import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectResponse,
+    ProjectDeleteResponse,
+)
+from app.projects import service as project_service
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -36,11 +40,9 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Create a new project. The authenticated user becomes the owner."""
-    # TODO: implement via service layer
-    ...
+    """Create a new project and return it."""
+    return project_service.create_project(db, project_data)
 
 
 # ── Read (list) ───────────────────────────────────────────────
@@ -52,14 +54,12 @@ def create_project(
     summary="List all projects",
 )
 def list_projects(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(10, ge=1, le=100, description="Max records to return"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Return a paginated list of projects visible to the current user."""
-    # TODO: implement via service layer
-    ...
+    """Return a paginated list of projects ordered by creation date (newest first)."""
+    return project_service.get_all_projects(db, skip=skip, limit=limit)
 
 
 # ── Read (single) ────────────────────────────────────────────
@@ -71,13 +71,11 @@ def list_projects(
     summary="Get a project by ID",
 )
 def get_project(
-    project_id: int,
+    project_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Return a single project by its ID."""
-    # TODO: implement via service layer
-    ...
+    """Return a single project by its UUID. Returns 404 if not found."""
+    return project_service.get_project_by_id(db, project_id)
 
 
 # ── Update ────────────────────────────────────────────────────
@@ -89,14 +87,12 @@ def get_project(
     summary="Update a project",
 )
 def update_project(
-    project_id: int,
+    project_id: UUID,
     project_data: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Update an existing project's details."""
-    # TODO: implement via service layer
-    ...
+    """Update an existing project. Only provided fields are changed."""
+    return project_service.update_project(db, project_id, project_data)
 
 
 # ── Delete ────────────────────────────────────────────────────
@@ -104,14 +100,12 @@ def update_project(
 
 @router.delete(
     "/{project_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=ProjectDeleteResponse,
     summary="Delete a project",
 )
 def delete_project(
-    project_id: int,
+    project_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
-    """Delete a project by ID. Only the owner or an admin may delete."""
-    # TODO: implement via service layer
-    ...
+    """Delete a project by its UUID. Returns 404 if not found."""
+    return project_service.delete_project(db, project_id)

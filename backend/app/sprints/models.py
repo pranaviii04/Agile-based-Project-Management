@@ -19,6 +19,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Uuid,
 )
 from sqlalchemy.orm import relationship
 
@@ -39,7 +40,7 @@ class Sprint(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     goal = Column(Text, nullable=True)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     status = Column(
         Enum(SprintStatus, native_enum=False),
         nullable=False,
