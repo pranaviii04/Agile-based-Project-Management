@@ -12,9 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 from app.routers import auth
+from app.projects.router import router as projects_router
+from app.sprints.router import router as sprints_router
 
 # Import all models so Base.metadata knows about them
-from app.models import user as _user_model  # noqa: F401
+from app.models import user as _user_model          # noqa: F401
+from app.projects import models as _project_model   # noqa: F401
+from app.sprints import models as _sprint_model     # noqa: F401
 
 
 @asynccontextmanager
@@ -46,6 +50,8 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────
 app.include_router(auth.router)
+app.include_router(projects_router)
+app.include_router(sprints_router)
 
 
 # ── Health Check ──────────────────────────────────────────────

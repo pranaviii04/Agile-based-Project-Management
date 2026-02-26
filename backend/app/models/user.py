@@ -13,6 +13,7 @@ import enum
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -34,6 +35,9 @@ class User(Base):
     role = Column(Enum(UserRole, native_enum=False), nullable=False, default=UserRole.TEAM_MEMBER)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # ── Relationships ─────────────────────────────────────────
+    projects = relationship("Project", back_populates="owner")
 
     def __repr__(self):
         return f"<User {self.email} ({self.role.value})>"
