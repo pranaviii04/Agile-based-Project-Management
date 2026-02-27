@@ -8,13 +8,12 @@ during which a set of tasks is completed.
 """
 
 import enum
+import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column,
-    Integer,
     String,
-    Text,
     Date,
     DateTime,
     Enum,
@@ -28,27 +27,35 @@ from app.database import Base
 
 class SprintStatus(str, enum.Enum):
     """Lifecycle status of a sprint."""
-    PLANNING = "planning"
+    PLANNED = "planned"
     ACTIVE = "active"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
 
 
 class Sprint(Base):
     __tablename__ = "sprints"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False, index=True)
-    goal = Column(Text, nullable=True)
-    project_id = Column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(
+        Uuid,
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
     status = Column(
         Enum(SprintStatus, native_enum=False),
         nullable=False,
-        default=SprintStatus.PLANNING,
+        default=SprintStatus.PLANNED,
     )
-    start_date = Column(Date, nullable=True)
-    end_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # ── Relationships ─────────────────────────────────────────
     project = relationship("Project", back_populates="sprints")

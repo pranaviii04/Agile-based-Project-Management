@@ -3,32 +3,32 @@ Sprints Router
 --------------
 API endpoints for sprint management.
 
-Sprints are nested under projects:
-  POST   /sprints/                        → create a new sprint
-  GET    /sprints/?project_id={id}        → list sprints for a project
-  GET    /sprints/{id}                    → get a single sprint
-  PUT    /sprints/{id}                    → update a sprint
-  DELETE /sprints/{id}                    → delete a sprint
-
-NOTE: Route handlers are scaffolded but NOT implemented yet.
+Endpoints:
+  POST   /sprints/                          → create a new sprint
+  GET    /sprints/{sprint_id}               → get a single sprint
+  GET    /projects/{project_id}/sprints     → list sprints for a project
+  PATCH  /sprints/{sprint_id}/status        → update sprint status
 """
 
-from fastapi import APIRouter, Depends, Query, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.sprints.schemas import SprintCreate, SprintUpdate, SprintResponse
+from app.sprints.schemas import SprintCreate, SprintStatusUpdate, SprintResponse
+from app.sprints import service as sprint_service
 
-router = APIRouter(prefix="/sprints", tags=["Sprints"])
+router = APIRouter(tags=["Sprints"])
 
 
 # ── Create ────────────────────────────────────────────────────
 
 
 @router.post(
-    "/",
+    "/sprints",
     response_model=SprintResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new sprint",
@@ -38,79 +38,71 @@ def create_sprint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new sprint under an existing project."""
-    # TODO: implement via service layer
-    ...
+    """
+    Create a new sprint under an existing project.
 
-
-# ── Read (list by project) ───────────────────────────────────
-
-
-@router.get(
-    "/",
-    response_model=list[SprintResponse],
-    summary="List sprints for a project",
-)
-def list_sprints(
-    project_id: int = Query(..., description="Filter sprints by project ID"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Return all sprints belonging to the specified project."""
-    # TODO: implement via service layer
-    ...
+    Validations:
+    - `project_id` must reference an existing project (404 otherwise).
+    - `end_date` must be strictly after `start_date` (422 otherwise).
+    """
+    return sprint_service.create_sprint(db, sprint_data)
 
 
 # ── Read (single) ────────────────────────────────────────────
 
 
 @router.get(
-    "/{sprint_id}",
+    "/sprints/{sprint_id}",
     response_model=SprintResponse,
     summary="Get a sprint by ID",
 )
 def get_sprint(
-    sprint_id: int,
+    sprint_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return a single sprint by its ID."""
-    # TODO: implement via service layer
-    ...
+    """Return a single sprint by its UUID. Returns 404 if not found."""
+    return sprint_service.get_sprint_by_id(db, sprint_id)
 
 
-# ── Update ────────────────────────────────────────────────────
+# ── Read (list by project) ───────────────────────────────────
 
 
-@router.put(
-    "/{sprint_id}",
+@router.get(
+    "/projects/{project_id}/sprints",
+    response_model=list[SprintResponse],
+    summary="List sprints for a project",
+)
+def list_sprints_by_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return all sprints belonging to the specified project, ordered by start date.
+    Returns 404 if the project does not exist.
+    """
+    return sprint_service.get_sprints_by_project(db, project_id)
+
+
+# ── Update Status ────────────────────────────────────────────
+
+
+@router.patch(
+    "/sprints/{sprint_id}/status",
     response_model=SprintResponse,
-    summary="Update a sprint",
+    summary="Update sprint status",
 )
-def update_sprint(
-    sprint_id: int,
-    sprint_data: SprintUpdate,
+def update_sprint_status(
+    sprint_id: UUID,
+    payload: SprintStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update an existing sprint's details."""
-    # TODO: implement via service layer
-    ...
+    """
+    Update the status of an existing sprint.
 
-
-# ── Delete ────────────────────────────────────────────────────
-
-
-@router.delete(
-    "/{sprint_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a sprint",
-)
-def delete_sprint(
-    sprint_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Delete a sprint by ID."""
-    # TODO: implement via service layer
-    ...
+    Allowed values: `planned`, `active`, `completed`.
+    Returns 404 if the sprint does not exist.
+    """
+    return sprint_service.update_sprint_status(db, sprint_id, payload.status)
