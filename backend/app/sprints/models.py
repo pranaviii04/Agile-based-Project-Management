@@ -59,6 +59,7 @@ class Sprint(Base):
 
     # ── Relationships ─────────────────────────────────────────
     project = relationship("Project", back_populates="sprints")
+    tasks = relationship("Task", back_populates="sprint", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Sprint {self.name!r} ({self.status.value})>"

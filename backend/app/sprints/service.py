@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.projects.models import Project
 from app.sprints.models import Sprint, SprintStatus
-from app.sprints.schemas import SprintCreate
+from app.sprints.schemas import SprintCreate, SprintUpdate
 
 
 # ── Helpers ───────────────────────────────────────────────────
@@ -55,6 +55,19 @@ def create_sprint(db: Session, sprint_data: SprintCreate) -> Sprint:
     db.commit()
     db.refresh(new_sprint)
     return new_sprint
+
+
+def get_all_sprints(db: Session, skip: int = 0, limit: int = 10) -> list[Sprint]:
+    """
+    Return all sprints with pagination support.
+    """
+    return (
+        db.query(Sprint)
+        .order_by(Sprint.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_sprints_by_project(db: Session, project_id: UUID) -> list[Sprint]:
@@ -101,3 +114,39 @@ def update_sprint_status(
     db.commit()
     db.refresh(sprint)
     return sprint
+
+
+def update_sprint(db: Session, sprint_id: UUID, sprint_data: SprintUpdate) -> Sprint:
+    """
+    Full update of a sprint (only provided fields are changed).
+
+    Validations:
+      • Sprint must exist (404 otherwise).
+      • If both start_date and end_date are supplied, end_date > start_date
+        (enforced by the SprintUpdate schema validator).
+    """
+    sprint = get_sprint_by_id(db, sprint_id)
+
+    update_fields = sprint_data.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        setattr(sprint, field, value)
+
+    sprint.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(sprint)
+    return sprint
+
+
+def delete_sprint(db: Session, sprint_id: UUID) -> dict:
+    """
+    Delete a sprint by its UUID.
+    Raises 404 if the sprint does not exist.
+    Returns a success message dict.
+    """
+    sprint = get_sprint_by_id(db, sprint_id)
+
+    db.delete(sprint)
+    db.commit()
+
+    return {"message": "Sprint deleted successfully"}

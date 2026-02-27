@@ -36,6 +36,21 @@ class SprintStatusUpdate(BaseModel):
     status: SprintStatus
 
 
+class SprintUpdate(BaseModel):
+    """Schema for a full sprint update (all fields optional)."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255, examples=["Sprint 2"])
+    start_date: Optional[date] = Field(None, description="Updated start date")
+    end_date: Optional[date] = Field(None, description="Updated end date")
+    status: Optional[SprintStatus] = None
+
+    @model_validator(mode="after")
+    def end_date_must_be_after_start_date(self):
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date <= self.start_date:
+                raise ValueError("end_date must be after start_date")
+        return self
+
+
 # ── Response Schemas ──────────────────────────────────────────
 
 
