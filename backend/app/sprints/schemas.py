@@ -67,3 +67,14 @@ class SprintResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SprintProgressResponse(BaseModel):
+    """Schema returned for sprint progress analytics."""
+    sprint_id: UUID
+    total_tasks: int
+    completed_tasks: int
+    in_progress_tasks: int
+    todo_tasks: int
+    completion_percentage: int
+

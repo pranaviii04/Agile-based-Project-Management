@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.projects.models import Project
 from app.sprints.models import Sprint, SprintStatus
 from app.sprints.schemas import SprintCreate, SprintUpdate
+from app.tasks.models import Task, TaskStatus
 
 
 # ── Helpers ───────────────────────────────────────────────────
@@ -147,6 +148,53 @@ def delete_sprint(db: Session, sprint_id: UUID) -> dict:
     sprint = get_sprint_by_id(db, sprint_id)
 
     db.delete(sprint)
-    db.commit()
-
     return {"message": "Sprint deleted successfully"}
+
+
+def get_sprint_progress(db: Session, sprint_id: UUID) -> dict:
+    """
+    Calculate sprint progress metrics based on task statuses.
+    Raises 404 if the sprint does not exist.
+    """
+    # 1. Validate sprint exists
+    sprint = get_sprint_by_id(db, sprint_id)
+    
+    # 2. Fetch all tasks for sprint in ONE query
+    tasks = db.query(Task).filter(Task.sprint_id == sprint_id).all()
+    
+    # 3. If no tasks, return zeroes
+    if not tasks:
+        return {
+            "sprint_id": sprint_id,
+            "total_tasks": 0,
+            "completed_tasks": 0,
+            "in_progress_tasks": 0,
+            "todo_tasks": 0,
+            "completion_percentage": 0
+        }
+        
+    # 4. Count tasks
+    total_tasks = len(tasks)
+    completed_tasks = sum(1 for t in tasks if t.status == TaskStatus.DONE)
+    in_progress_tasks = sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS)
+    todo_tasks = sum(1 for t in tasks if t.status == TaskStatus.TODO)
+    
+    # 5. Calculate percentage (rounded to nearest integer)
+    completion_percentage = round((completed_tasks / total_tasks) * 100)
+    
+    # Optional Enhancement: Auto-complete sprint if all tasks are done
+    if completed_tasks == total_tasks and total_tasks > 0 and sprint.status != SprintStatus.COMPLETED:
+        sprint.status = SprintStatus.COMPLETED
+        sprint.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(sprint)
+    
+    # 6. Return response
+    return {
+        "sprint_id": sprint_id,
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks,
+        "in_progress_tasks": in_progress_tasks,
+        "todo_tasks": todo_tasks,
+        "completion_percentage": completion_percentage
+    }

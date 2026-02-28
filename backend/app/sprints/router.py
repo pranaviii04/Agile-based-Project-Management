@@ -27,6 +27,7 @@ from app.sprints.schemas import (
     SprintUpdate,
     SprintStatusUpdate,
     SprintResponse,
+    SprintProgressResponse,
 )
 from app.sprints import service as sprint_service
 
@@ -112,6 +113,27 @@ def list_sprints_by_project(
     Returns 404 if the project does not exist.
     """
     return sprint_service.get_sprints_by_project(db, project_id)
+
+
+# ── Read Progress Analytics ──────────────────────────────────
+
+@router.get(
+    "/sprints/{sprint_id}/progress",
+    response_model=SprintProgressResponse,
+    summary="Get sprint progress analytics",
+    dependencies=[Depends(require_role(UserRole.SCRUM_MASTER, UserRole.TEAM_MEMBER, UserRole.ADMIN))],
+)
+def get_sprint_progress(
+    sprint_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return sprint-level task progress metrics.
+    
+    **Requires role:** `scrum_master`, `team_member`, or `admin`
+    """
+    return sprint_service.get_sprint_progress(db, sprint_id)
 
 
 # ── Full Update ──────────────────────────────────────────────
