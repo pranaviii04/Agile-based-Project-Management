@@ -1,45 +1,53 @@
 """
-CPM Service
------------
-Bridges the CPM engine with the rest of the application.
-
-Responsibilities (once implemented):
-  - Accept a project/sprint ID, fetch its tasks from the DB
-  - Build the CPM input graph
-  - Run the CPM engine
-  - Return / persist the results
-
-NOTE: Not implemented yet — only function signatures are scaffolded.
+CPM Service Layer
+-----------------
+Bridges the pure CPM engine with the rest of the application.
+Currently accepts pre-formatted task lists to run CPM analysis.
 """
 
-from sqlalchemy.orm import Session
+from typing import List, Dict
 
-from app.cpm.engine import CPMEngine
-from app.cpm.schemas import CPMInput, CPMResult
-
-# Single reusable engine instance
-_engine = CPMEngine()
+from .engine import run_cpm
 
 
-def compute_cpm(data: CPMInput) -> CPMResult:
+def run_cpm_for_sprint(sprint_id: str, tasks: List[Dict]) -> Dict:
     """
-    Run CPM on a manually provided task graph (no DB lookup).
-    Useful for ad-hoc calculations via the API.
+    Executes the CPM engine for a specific sprint and formats the output.
+    
+    Args:
+        sprint_id: The identifier for the sprint.
+        tasks: A list of task dictionaries containing 'id', 'duration', and 'dependencies'.
+        
+    Returns:
+        A dictionary containing the sprint_id, project_duration,
+        critical_tasks list, and slack_values for each task.
+        
+    Raises:
+        ValueError: If the sprint_id is empty, tasks list is invalid/empty,
+                    or if the CPM engine encounters invalid data/cycles.
     """
-    raise NotImplementedError
+    if not sprint_id or not str(sprint_id).strip():
+        raise ValueError("sprint_id cannot be empty.")
+        
+    if not isinstance(tasks, list):
+        raise ValueError("tasks must be a list.")
+        
+    if len(tasks) == 0:
+        raise ValueError("tasks list cannot be empty.")
 
-
-def compute_cpm_for_project(db: Session, project_id: int) -> CPMResult:
-    """
-    Fetch all tasks for the given project from the database,
-    build the dependency graph, and run CPM.
-    """
-    raise NotImplementedError
-
-
-def compute_cpm_for_sprint(db: Session, sprint_id: int) -> CPMResult:
-    """
-    Fetch all tasks for the given sprint from the database,
-    build the dependency graph, and run CPM.
-    """
-    raise NotImplementedError
+    # TODO: Replace tasks parameter with DB fetch:
+    # tasks = get_tasks_for_cpm(db, sprint_id)
+    
+    result = run_cpm(tasks)
+    
+    slack_values = {
+        task_id: task_data["slack"]
+        for task_id, task_data in result["tasks"].items()
+    }
+    
+    return {
+        "sprint_id": str(sprint_id),
+        "project_duration": result["project_duration"],
+        "critical_tasks": result["critical_path"],
+        "slack_values": slack_values
+    }
