@@ -15,6 +15,7 @@ from app.routers import auth
 from app.projects.router import router as projects_router
 from app.sprints.router import router as sprints_router
 from app.tasks.router import router as tasks_router
+from app.cpm.router import router as cpm_router
 
 # Import all models so Base.metadata knows about them
 from app.models import user as _user_model          # noqa: F401
@@ -55,6 +56,7 @@ app.include_router(auth.router)
 app.include_router(projects_router)
 app.include_router(sprints_router)
 app.include_router(tasks_router)
+app.include_router(cpm_router)
 
 
 # ── Health Check ──────────────────────────────────────────────
