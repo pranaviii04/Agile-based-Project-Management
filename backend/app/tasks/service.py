@@ -184,6 +184,22 @@ def delete_task(db: Session, task_id: UUID) -> dict:
     return {"message": "Task deleted successfully"}
 
 
+def get_tasks_assigned_to_user(
+    db: Session, user_id: int, status_filter: TaskStatus | None = None
+) -> list[Task]:
+    """
+    Return all tasks assigned to the specified user.
+    Optionally filter by a specific task status.
+    Returns an empty list if no tasks are assigned.
+    """
+    query = db.query(Task).filter(Task.assigned_to == user_id)
+    
+    if status_filter:
+        query = query.filter(Task.status == status_filter)
+        
+    return query.order_by(Task.priority.desc(), Task.created_at.asc()).all()
+
+
 # ── Dependency CRUD ───────────────────────────────────────────
 
 

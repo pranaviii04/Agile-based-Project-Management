@@ -38,6 +38,7 @@ from app.tasks.schemas import (
     TaskDependencyResponse,
     CPMTaskData,
 )
+from app.tasks.models import TaskStatus
 from app.tasks import service as task_service
 
 router = APIRouter(tags=["Tasks"])
@@ -72,6 +73,29 @@ def create_task(
     - `duration` must be > 0 (422 otherwise).
     """
     return task_service.create_task(db, task_data)
+
+
+# ── Read My Tasks ────────────────────────────────────────────
+
+
+@router.get(
+    "/tasks/my",
+    response_model=list[TaskResponse],
+    summary="Get user's assigned tasks",
+    dependencies=[Depends(require_role(UserRole.TEAM_MEMBER, UserRole.SCRUM_MASTER, UserRole.ADMIN))],
+)
+def get_my_tasks(
+    status: TaskStatus = Query(None, description="Filter by task status (e.g., TODO, IN_PROGRESS, DONE)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return all tasks assigned directly to the authenticated user.
+    Optionally filter the resulting list by a specific `status`.
+    
+    **Requires role:** `team_member`, `scrum_master`, or `admin`
+    """
+    return task_service.get_tasks_assigned_to_user(db, current_user.id, status)
 
 
 # ── Read Task (single) ───────────────────────────────────────
