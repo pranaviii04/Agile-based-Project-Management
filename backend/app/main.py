@@ -7,10 +7,11 @@ Run with:  uvicorn app.main:app --reload
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
+from app.exceptions import custom_http_exception_handler
 from app.routers import auth
 from app.projects.router import router as projects_router
 from app.sprints.router import router as sprints_router
@@ -42,6 +43,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Replace the default exception handler with our standardized error structure
+app.add_exception_handler(HTTPException, custom_http_exception_handler)
 
 # ── CORS (allow Angular frontend to talk to this API) ────────
 app.add_middleware(

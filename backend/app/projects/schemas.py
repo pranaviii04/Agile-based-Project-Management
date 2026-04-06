@@ -45,3 +45,23 @@ class ProjectResponse(BaseModel):
 class ProjectDeleteResponse(BaseModel):
     """Schema returned after deleting a project."""
     message: str
+
+
+class LatestSprintReport(BaseModel):
+    """Schema for the latest sprint's CPM insights."""
+    sprint_id: str
+    critical_tasks: list[str]
+    project_duration: int
+
+
+class ProjectReportResponse(BaseModel):
+    """Schema for the aggregated project-level analytics."""
+    project_id: str
+    total_sprints: int
+    total_tasks: int
+    completed_tasks: int
+    ongoing_tasks: int
+    todo_tasks: int
+    average_sprint_completion_percentage: int
+    latest_sprint: Optional[LatestSprintReport] = None
+

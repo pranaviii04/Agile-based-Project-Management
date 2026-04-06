@@ -12,7 +12,7 @@ FastAPI dependencies used across multiple routers:
 
 from typing import List
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.services.auth import decode_access_token
+from app.exceptions import raise_error
 
 # Tells FastAPI where clients should send credentials to get a token.
 # This also makes the "Authorize" button appear in Swagger UI.
@@ -34,23 +35,24 @@ def get_current_user(
     Dependency: decode JWT → look up user in DB → return User object.
     Raises 401 if the token is invalid or the user doesn't exist.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    def get_credentials_exception():
+        raise_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     try:
         payload = decode_access_token(token)
         email: str | None = payload.get("sub")
         if email is None:
-            raise credentials_exception
+            get_credentials_exception()
     except JWTError:
-        raise credentials_exception
+        get_credentials_exception()
 
     user = db.query(User).filter(User.email == email).first()
     if user is None or not user.is_active:
-        raise credentials_exception
+        get_credentials_exception()
 
     return user
 
@@ -67,9 +69,9 @@ def require_role(*allowed_roles: UserRole):
 
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Required role(s): {[r.value for r in allowed_roles]}",
+            raise_error(
+                status.HTTP_403_FORBIDDEN,
+                f"Access denied. Required role(s): {[r.value for r in allowed_roles]}",
             )
         return current_user
 

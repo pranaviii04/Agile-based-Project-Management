@@ -9,8 +9,10 @@ from collections import deque
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy.orm import Session
+
+from app.exceptions import raise_error
 
 from app.sprints.models import Sprint
 from app.tasks.models import Task, TaskDependency, TaskStatus
@@ -24,9 +26,9 @@ def _get_sprint_or_404(db: Session, sprint_id: UUID) -> Sprint:
     """Return the Sprint or raise 404."""
     sprint = db.query(Sprint).filter(Sprint.id == sprint_id).first()
     if sprint is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sprint with id '{sprint_id}' not found.",
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"Sprint with id '{sprint_id}' not found.",
         )
     return sprint
 
@@ -35,9 +37,9 @@ def _get_task_or_404(db: Session, task_id: UUID) -> Task:
     """Return the Task or raise 404."""
     task = db.query(Task).filter(Task.id == task_id).first()
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with id '{task_id}' not found.",
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"Task with id '{task_id}' not found.",
         )
     return task
 
@@ -46,9 +48,9 @@ def _get_dependency_or_404(db: Session, dependency_id: UUID) -> TaskDependency:
     """Return the TaskDependency or raise 404."""
     dep = db.query(TaskDependency).filter(TaskDependency.id == dependency_id).first()
     if dep is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Dependency with id '{dependency_id}' not found.",
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"Dependency with id '{dependency_id}' not found.",
         )
     return dep
 
@@ -67,9 +69,9 @@ def _check_circular_dependency(
     while queue:
         current = queue.popleft()
         if current == task_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Adding this dependency would create a circular dependency.",
+            raise_error(
+                status.HTTP_400_BAD_REQUEST,
+                "Adding this dependency would create a circular dependency.",
             )
         if current in visited:
             continue
@@ -218,9 +220,9 @@ def create_dependency(
     """
     # No self-dependency
     if task_id == depends_on_task_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A task cannot depend on itself.",
+        raise_error(
+            status.HTTP_400_BAD_REQUEST,
+            "A task cannot depend on itself.",
         )
 
     task = _get_task_or_404(db, task_id)
@@ -228,9 +230,9 @@ def create_dependency(
 
     # Same sprint check
     if task.sprint_id != depends_on.sprint_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Both tasks must belong to the same sprint.",
+        raise_error(
+            status.HTTP_400_BAD_REQUEST,
+            "Both tasks must belong to the same sprint.",
         )
 
     # Duplicate check
@@ -243,9 +245,9 @@ def create_dependency(
         .first()
     )
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This dependency already exists.",
+        raise_error(
+            status.HTTP_400_BAD_REQUEST,
+            "This dependency already exists.",
         )
 
     # Circular dependency check

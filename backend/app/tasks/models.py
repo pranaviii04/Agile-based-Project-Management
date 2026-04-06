@@ -22,6 +22,7 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     Uuid,
+    Index,
 )
 from sqlalchemy.orm import relationship
 
@@ -37,6 +38,12 @@ class TaskStatus(str, enum.Enum):
 
 class Task(Base):
     __tablename__ = "tasks"
+
+    __table_args__ = (
+        Index("idx_task_sprint_id", "sprint_id"),
+        Index("idx_task_assigned_to", "assigned_to"),
+        Index("idx_task_status", "status"),
+    )
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), nullable=False, index=True)
@@ -97,6 +104,8 @@ class TaskDependency(Base):
         UniqueConstraint(
             "task_id", "depends_on_task_id", name="uq_task_dependency_pair"
         ),
+        Index("idx_dependency_task_id", "task_id"),
+        Index("idx_dependency_depends_on", "depends_on_task_id"),
     )
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)

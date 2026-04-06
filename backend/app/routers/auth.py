@@ -9,7 +9,7 @@ Endpoints:
   GET  /auth/me        → retrieve the logged-in user's profile
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.services.auth import hash_password, verify_password, create_access_token
+from app.exceptions import raise_error
 from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -42,9 +43,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Check for duplicate email
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists.",
+        raise_error(
+            status.HTTP_400_BAD_REQUEST,
+            "A user with this email already exists.",
         )
 
     # Create user
@@ -86,16 +87,16 @@ def login(
     user = db.query(User).filter(User.email == form_data.username).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password.",
+        raise_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "Incorrect email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account has been deactivated.",
+        raise_error(
+            status.HTTP_403_FORBIDDEN,
+            "This account has been deactivated.",
         )
 
     # Encode user info in the JWT payload

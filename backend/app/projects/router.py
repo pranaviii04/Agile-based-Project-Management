@@ -25,6 +25,7 @@ from app.projects.schemas import (
     ProjectUpdate,
     ProjectResponse,
     ProjectDeleteResponse,
+    ProjectReportResponse,
 )
 from app.projects import service as project_service
 
@@ -129,3 +130,27 @@ def delete_project(
     **Requires role:** `admin`
     """
     return project_service.delete_project(db, project_id)
+
+
+# ── Analytics & Reporting ─────────────────────────────────────
+
+
+@router.get(
+    "/{project_id}/report",
+    response_model=ProjectReportResponse,
+    summary="Get project-level report & analytics",
+    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.SCRUM_MASTER))],
+)
+def get_project_report(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate aggregated analytics for a project.
+
+    **Requires role:** `admin` or `scrum_master`
+    Raises 404 if project not found.
+    Raises 400 if CPM analysis fails on the latest sprint.
+    """
+    return project_service.generate_project_report(db, project_id)

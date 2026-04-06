@@ -8,8 +8,10 @@ All database interactions for sprints live here, keeping routers thin.
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy.orm import Session
+
+from app.exceptions import raise_error
 
 from app.projects.models import Project
 from app.sprints.models import Sprint, SprintStatus
@@ -24,9 +26,9 @@ def _validate_project_exists(db: Session, project_id: UUID) -> Project:
     """Return the Project or raise 404 if it doesn't exist."""
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project with id '{project_id}' not found.",
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"Project with id '{project_id}' not found.",
         )
     return project
 
@@ -93,9 +95,9 @@ def get_sprint_by_id(db: Session, sprint_id: UUID) -> Sprint:
     """
     sprint = db.query(Sprint).filter(Sprint.id == sprint_id).first()
     if sprint is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sprint with id '{sprint_id}' not found.",
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"Sprint with id '{sprint_id}' not found.",
         )
     return sprint
 
@@ -148,6 +150,7 @@ def delete_sprint(db: Session, sprint_id: UUID) -> dict:
     sprint = get_sprint_by_id(db, sprint_id)
 
     db.delete(sprint)
+    db.commit()
     return {"message": "Sprint deleted successfully"}
 
 
