@@ -34,7 +34,36 @@ async def lifespan(app: FastAPI):
     In production you'd use Alembic migrations instead.
     """
     Base.metadata.create_all(bind=engine)
+    _seed_admin()
     yield
+
+
+def _seed_admin():
+    """
+    Create a default admin account on first startup if no admin exists.
+    Credentials:  admin@agilepm.com  /  admin123
+    """
+    from app.database import SessionLocal
+    from app.models.user import User, UserRole
+    from app.services.auth import hash_password
+
+    db = SessionLocal()
+    try:
+        admin_exists = db.query(User).filter(User.role == UserRole.ADMIN).first()
+        if not admin_exists:
+            admin = User(
+                email="admin@agilepm.com",
+                full_name="Admin",
+                hashed_password=hash_password("admin123"),
+                role=UserRole.ADMIN,
+            )
+            db.add(admin)
+            db.commit()
+            print("✅ Default admin created: admin@agilepm.com / admin123")
+        else:
+            print("ℹ️  Admin user already exists — skipping seed.")
+    finally:
+        db.close()
 
 
 app = FastAPI(
@@ -47,10 +76,13 @@ app = FastAPI(
 # Replace the default exception handler with our standardized error structure
 app.add_exception_handler(HTTPException, custom_http_exception_handler)
 
-# ── CORS (allow Angular frontend to talk to this API) ────────
+# ── CORS (allow frontend dev servers to talk to this API) ────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # Angular dev server
+    allow_origins=[
+        "http://localhost:4200",   # Angular dev server
+        "http://localhost:5173",   # React / Vite dev server
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -8,6 +8,7 @@ from typing import List
 from fastapi import status
 from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
+from app.services.auth import hash_password
 from app.exceptions import raise_error
 
 def get_all_users(db: Session) -> List[User]:
@@ -41,4 +42,24 @@ def update_user_role(user_id: int, new_role: str, db: Session) -> User:
     db.commit()
     db.refresh(user)
     
+    return user
+
+
+def reset_user_password(user_id: int, new_password: str, db: Session) -> User:
+    """
+    Reset a user's password (admin-only operation).
+    Raises 404 if the user doesn't exist.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"User {user_id} not found."
+        )
+
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+
     return user
