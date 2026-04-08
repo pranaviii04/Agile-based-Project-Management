@@ -63,3 +63,32 @@ def reset_user_password(user_id: int, new_password: str, db: Session) -> User:
     db.refresh(user)
 
     return user
+
+
+def delete_user(user_id: int, db: Session) -> dict:
+    """
+    Delete a user from the system.
+    Raises 404 if the user doesn't exist.
+    Prevents deleting the last admin.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise_error(
+            status.HTTP_404_NOT_FOUND,
+            f"User {user_id} not found."
+        )
+
+    # Safeguard: Prevent deleting the last admin
+    if user.role == UserRole.ADMIN:
+        admin_count = db.query(User).filter(User.role == UserRole.ADMIN).count()
+        if admin_count <= 1:
+            raise_error(
+                status.HTTP_400_BAD_REQUEST,
+                "Cannot delete the last remaining admin in the system."
+            )
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": f"User {user_id} deleted successfully."}

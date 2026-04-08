@@ -162,8 +162,13 @@ def update_task_status(db: Session, task_id: UUID, new_status: TaskStatus) -> Ta
     """
     Update only the status of a task.
     Raises 404 if the task does not exist.
+    Raises 400 if transitioning to DONE while dependencies are incomplete.
     """
     task = _get_task_or_404(db, task_id)
+
+    # Enforce dependency completion before allowing DONE
+    if new_status == TaskStatus.DONE:
+        _validate_dependencies_completed(db, task_id)
 
     task.status = new_status
     task.updated_at = datetime.now(timezone.utc)
@@ -171,6 +176,40 @@ def update_task_status(db: Session, task_id: UUID, new_status: TaskStatus) -> Ta
     db.commit()
     db.refresh(task)
     return task
+
+
+def _validate_dependencies_completed(db: Session, task_id: UUID) -> None:
+    """
+    Check that ALL predecessor tasks are DONE before allowing
+    this task to be marked as DONE.
+    Raises 400 if any dependency is not yet completed.
+    """
+    deps = (
+        db.query(TaskDependency)
+        .filter(TaskDependency.task_id == task_id)
+        .all()
+    )
+
+    if not deps:
+        return  # No dependencies — free to complete
+
+    dep_task_ids = [d.depends_on_task_id for d in deps]
+
+    incomplete = (
+        db.query(Task)
+        .filter(
+            Task.id.in_(dep_task_ids),
+            Task.status != TaskStatus.DONE,
+        )
+        .all()
+    )
+
+    if incomplete:
+        names = ", ".join(t.name for t in incomplete)
+        raise_error(
+            status.HTTP_400_BAD_REQUEST,
+            f"Cannot complete task. These dependencies are not done: {names}",
+        )
 
 
 def delete_task(db: Session, task_id: UUID) -> dict:

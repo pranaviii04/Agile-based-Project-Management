@@ -28,3 +28,21 @@ export async function getSprintById(id) {
   const response = await API.get(`/sprints/${id}`);
   return response.data;
 }
+
+/**
+ * Fetch sprint progress analytics.
+ * GET /sprints/:sprintId/progress
+ */
+export async function getSprintProgress(sprintId) {
+  const response = await API.get(`/sprints/${sprintId}/progress`);
+  return response.data;
+}
+
+/**
+ * Fetch all sprints in the system.
+ * GET /sprints
+ */
+export async function getAllSprints(skip = 0, limit = 100) {
+  const response = await API.get("/sprints", { params: { skip, limit } });
+  return response.data;
+}

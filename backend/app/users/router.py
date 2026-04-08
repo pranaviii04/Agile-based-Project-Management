@@ -6,6 +6,7 @@ API endpoints for managing system users and roles.
 Endpoints:
   PATCH  /users/{user_id}/role      → Update a user's role       [admin]
   PATCH  /users/{user_id}/password  → Reset a user's password    [admin]
+  DELETE /users/{user_id}           → Delete a user              [admin]
   GET    /users                     → List all system users      [admin]
 """
 
@@ -71,11 +72,32 @@ def reset_user_password(
     )
 
 
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete a user",
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a user from the system.
+
+    **Requires role:** `admin`
+
+    Returns 404 if the user does not exist.
+    Prevents deleting the last admin.
+    """
+    return user_service.delete_user(user_id=user_id, db=db)
+
+
 @router.get(
     "/",
     response_model=List[UserResponse],
     summary="List all users",
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
+    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.SCRUM_MASTER))],
 )
 def get_all_users(
     db: Session = Depends(get_db),
@@ -83,6 +105,6 @@ def get_all_users(
     """
     Returns a unified list of all registered users in the system.
     
-    **Requires role:** `admin`
+    **Requires role:** `admin` or `scrum_master`
     """
     return user_service.get_all_users(db)

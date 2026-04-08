@@ -88,6 +88,19 @@ function AdminPanel() {
     }
   };
 
+  // ── Delete user ────────────────────────────────────────────────
+  const handleDeleteUser = async (userId, email) => {
+    if (!window.confirm(`Are you sure you want to delete "${email}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await API.delete(`/users/${userId}`);
+      fetchUsers();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to delete user.");
+    }
+  };
+
   // ── Reset password ───────────────────────────────────────────
   const openResetModal = (user) => {
     setResetModal({ id: user.id, full_name: user.full_name, email: user.email });
@@ -279,12 +292,20 @@ function AdminPanel() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <button
-                        onClick={() => openResetModal(u)}
-                        className="px-3 py-1.5 text-xs font-medium bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 rounded-lg transition-colors cursor-pointer"
-                      >
-                        Reset Password
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openResetModal(u)}
+                          className="px-3 py-1.5 text-xs font-medium bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Reset Password
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          className="px-3 py-1.5 text-xs font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

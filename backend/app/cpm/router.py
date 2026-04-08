@@ -25,9 +25,9 @@ router = APIRouter(prefix="/sprints", tags=["CPM"])
 
 class CPMResponse(BaseModel):
     sprint_id: UUID
-    project_duration: int
+    project_duration: float
     critical_tasks: List[str]
-    slack_values: Dict[str, int]
+    slack_values: Dict[str, float]
 
 
 # ── Routes ────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ class CPMResponse(BaseModel):
     "/{sprint_id}/cpm",
     response_model=CPMResponse,
     summary="Run DB-Backed CPM Analysis for a Sprint",
-    dependencies=[Depends(require_role(UserRole.SCRUM_MASTER))],
+    dependencies=[Depends(require_role(UserRole.SCRUM_MASTER, UserRole.ADMIN))],
 )
 def execute_cpm(sprint_id: UUID, db: Session = Depends(get_db)):
     """
@@ -58,4 +58,11 @@ def execute_cpm(sprint_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions from the service layer
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"CPM analysis failed: {str(e)}"
         )

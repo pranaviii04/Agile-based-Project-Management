@@ -66,12 +66,10 @@ def run_cpm_for_sprint(sprint_id: UUID, db: Session) -> Dict:
     # 5. Call pure algorithm logic
     result = run_cpm(cpm_tasks)
     
-    # Map task_id back to task.name for human-readable output
-    task_name_map = {str(task.id): task.name for task in tasks_records}
-    
-    # Extract only slack values instead of full detailed task metrics
+    # Use task IDs (strings) as keys — the frontend matches against task.id
+    # Extract slack values keyed by task UUID
     slack_values = {
-        task_name_map[task_id]: task_data["slack"]
+        task_id: task_data["slack"]
         for task_id, task_data in result["tasks"].items()
     }
     
@@ -79,6 +77,7 @@ def run_cpm_for_sprint(sprint_id: UUID, db: Session) -> Dict:
     return {
         "sprint_id": str(sprint_id),
         "project_duration": result["project_duration"],
-        "critical_tasks": [task_name_map[task_id] for task_id in result["critical_path"]],
+        "critical_tasks": result["critical_path"],
         "slack_values": slack_values
     }
+

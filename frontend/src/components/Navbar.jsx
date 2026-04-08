@@ -1,9 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -25,19 +26,31 @@ function Navbar() {
           <div className="flex items-center gap-6">
             <Link
               to="/"
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === "/"
+                  ? "text-indigo-400"
+                  : "text-slate-300 hover:text-white"
+              }`}
             >
               Dashboard
             </Link>
             <Link
               to="/projects"
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname.startsWith("/projects") || location.pathname.startsWith("/sprints") || location.pathname.startsWith("/report")
+                  ? "text-indigo-400"
+                  : "text-slate-300 hover:text-white"
+              }`}
             >
               Projects
             </Link>
             <Link
               to="/my-tasks"
-              className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === "/my-tasks"
+                  ? "text-indigo-400"
+                  : "text-slate-300 hover:text-white"
+              }`}
             >
               My Tasks
             </Link>
@@ -45,7 +58,11 @@ function Navbar() {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === "/admin"
+                    ? "text-amber-400"
+                    : "text-amber-400/70 hover:text-amber-300"
+                }`}
               >
                 Admin
               </Link>

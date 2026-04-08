@@ -1,14 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getSprintById } from "../services/sprintService";
-import { getTasksBySprint, createTask, updateTaskStatus } from "../services/taskService";
+import { getSprintById, getSprintProgress } from "../services/sprintService";
+import {
+  getTasksBySprint,
+  createTask,
+  updateTaskStatus,
+  getDependencies,
+  createDependency,
+  deleteDependency,
+} from "../services/taskService";
+import { runCPM } from "../services/cpmService";
+import { getAllUsers } from "../services/userService";
 import TaskCard from "../components/TaskCard";
+import CPMResults from "../components/CPMResults";
 
 function SprintDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const canCreateTask =
+    user?.role === "scrum_master" || user?.role === "admin";
+  const canRunCPM =
     user?.role === "scrum_master" || user?.role === "admin";
 
   // ── Data state ───────────────────────────────────────────────
@@ -16,6 +28,16 @@ function SprintDetails() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(null);
+  const [systemUsers, setSystemUsers] = useState([]);
+
+  // ── Dependency state ─────────────────────────────────────────
+  const [dependencyMap, setDependencyMap] = useState({});
+
+  // ── CPM state ────────────────────────────────────────────────
+  const [cpmResult, setCpmResult] = useState(null);
+  const [cpmLoading, setCpmLoading] = useState(false);
+  const [cpmError, setCpmError] = useState("");
 
   // ── Create task form state ───────────────────────────────────
   const [showForm, setShowForm] = useState(false);
@@ -24,6 +46,7 @@ function SprintDetails() {
     description: "",
     duration: "",
     priority: "1",
+    assigned_to: "",
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -37,12 +60,17 @@ function SprintDetails() {
     setLoading(true);
     setError("");
     try {
-      const [sprintData, tasksData] = await Promise.all([
+      const [sprintData, tasksData, progressData, usersData] = await Promise.all([
         getSprintById(id),
         getTasksBySprint(id),
+        getSprintProgress(id),
+        getAllUsers().catch(() => []), // Fail silently if no permission
       ]);
       setSprint(sprintData);
       setTasks(tasksData);
+      setProgress(progressData);
+      setSystemUsers(usersData);
+      await fetchAllDependencies(tasksData);
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to load sprint.");
     } finally {
@@ -50,13 +78,32 @@ function SprintDetails() {
     }
   }
 
-  // ── Refresh tasks only ───────────────────────────────────────
+  // ── Fetch dependencies for all tasks ─────────────────────────
+  const fetchAllDependencies = useCallback(async (taskList) => {
+    const map = {};
+    const results = await Promise.all(
+      taskList.map((t) =>
+        getDependencies(t.id).then((deps) => ({ taskId: t.id, deps }))
+      )
+    );
+    for (const { taskId, deps } of results) {
+      map[taskId] = { deps };
+    }
+    setDependencyMap(map);
+  }, []);
+
+  // ── Refresh tasks + dependencies ─────────────────────────────
   async function refreshTasks() {
     try {
-      const data = await getTasksBySprint(id);
+      const [data, progressData] = await Promise.all([
+        getTasksBySprint(id),
+        getSprintProgress(id),
+      ]);
       setTasks(data);
+      setProgress(progressData);
+      await fetchAllDependencies(data);
     } catch {
-      // Silently fail — main data is already loaded
+      // Silently fail
     }
   }
 
@@ -72,10 +119,11 @@ function SprintDetails() {
         description: form.description || null,
         duration: parseInt(form.duration, 10),
         priority: parseInt(form.priority, 10),
+        assigned_to: form.assigned_to ? parseInt(form.assigned_to, 10) : null,
         status: "todo",
         sprint_id: id,
       });
-      setForm({ name: "", description: "", duration: "", priority: "1" });
+      setForm({ name: "", description: "", duration: "", priority: "1", assigned_to: "" });
       setShowForm(false);
       refreshTasks();
     } catch (err) {
@@ -95,12 +143,43 @@ function SprintDetails() {
     }
   };
 
-  // ── Derived counts ──────────────────────────────────────────
+  // ── Dependency handlers ──────────────────────────────────────
+  const handleAddDependency = async (taskId, dependsOnTaskId) => {
+    await createDependency(taskId, dependsOnTaskId);
+    const deps = await getDependencies(taskId);
+    setDependencyMap((prev) => ({ ...prev, [taskId]: { deps } }));
+  };
+
+  const handleRemoveDependency = async (depId) => {
+    await deleteDependency(depId);
+    refreshTasks();
+  };
+
+  // ── Run CPM ──────────────────────────────────────────────────
+  const handleRunCPM = async () => {
+    setCpmLoading(true);
+    setCpmError("");
+    setCpmResult(null);
+
+    try {
+      const result = await runCPM(id);
+      setCpmResult(result);
+    } catch (err) {
+      setCpmError(err.response?.data?.detail || "CPM analysis failed.");
+    } finally {
+      setCpmLoading(false);
+    }
+  };
+
+  // ── Derived data ─────────────────────────────────────────────
   const todoCount = tasks.filter((t) => t.status === "todo").length;
   const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
-  // ── Loading state ────────────────────────────────────────────
+  // Set of critical task IDs for highlighting
+  const criticalTaskIds = new Set(cpmResult?.critical_tasks || []);
+
+  // ── Loading / Error ──────────────────────────────────────────
   if (loading) {
     return (
       <div className="p-6">
@@ -109,7 +188,6 @@ function SprintDetails() {
     );
   }
 
-  // ── Error state ──────────────────────────────────────────────
   if (error) {
     return (
       <div className="p-6">
@@ -182,20 +260,63 @@ function SprintDetails() {
         </div>
       </div>
 
-      {/* Tasks Header */}
+      {/* Sprint Progress Summary */}
+      {progress && (
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 mb-6">
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                Completion
+              </p>
+              <p className="text-xl font-bold text-white">
+                {progress.completion_percentage}%
+              </p>
+            </div>
+            <p className="text-sm text-slate-400">
+              {progress.completed_tasks} / {progress.total_tasks} Tasks Completed
+            </p>
+          </div>
+          <div className="w-full bg-slate-800 rounded-full h-2.5">
+            <div
+              className="bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${progress.completion_percentage}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
+      {/* Tasks Header + Actions */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-white">
           Tasks ({tasks.length})
         </h2>
-        {canCreateTask && (
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
-          >
-            {showForm ? "Cancel" : "+ New Task"}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {canRunCPM && tasks.length > 0 && (
+            <button
+              onClick={handleRunCPM}
+              disabled={cpmLoading}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cpmLoading ? "Running…" : "Run CPM"}
+            </button>
+          )}
+          {canCreateTask && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+            >
+              {showForm ? "Cancel" : "+ New Task"}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* CPM Error */}
+      {cpmError && (
+        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+          {cpmError}
+        </div>
+      )}
 
       {/* Create Task Form */}
       {showForm && (
@@ -300,6 +421,31 @@ function SprintDetails() {
               </select>
             </div>
 
+            <div>
+              <label
+                htmlFor="task-assignee"
+                className="block text-sm font-medium text-slate-300 mb-1"
+              >
+                Assignee <span className="text-slate-500">(optional)</span>
+              </label>
+              <select
+                id="task-assignee"
+                value={form.assigned_to}
+                onChange={(e) =>
+                  setForm({ ...form, assigned_to: e.target.value })
+                }
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                disabled={creating}
+              >
+                <option value="">Unassigned</option>
+                {systemUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.role.replace("_", " ")})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="sm:col-span-2">
               <button
                 type="submit"
@@ -319,7 +465,7 @@ function SprintDetails() {
           <p className="text-slate-500">No tasks yet in this sprint.</p>
           {canCreateTask && (
             <p className="text-slate-600 text-sm mt-2">
-              Click "+ New Task" to create the first task.
+              Click &quot;+ New Task&quot; to create the first task.
             </p>
           )}
         </div>
@@ -330,10 +476,19 @@ function SprintDetails() {
               key={task.id}
               task={task}
               onStatusChange={handleStatusChange}
+              allTasks={tasks}
+              dependencyMap={dependencyMap}
+              onAddDependency={handleAddDependency}
+              onRemoveDependency={handleRemoveDependency}
+              isCritical={criticalTaskIds.has(task.id)}
+              systemUsers={systemUsers}
             />
           ))}
         </div>
       )}
+
+      {/* CPM Results Section */}
+      {cpmResult && <CPMResults cpmResult={cpmResult} tasks={tasks} />}
     </div>
   );
 }

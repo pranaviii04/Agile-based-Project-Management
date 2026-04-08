@@ -44,3 +44,34 @@ export async function getMyTasks(status = null) {
   const response = await API.get("/tasks/my", { params });
   return response.data;
 }
+
+// ── Dependency Functions ────────────────────────────────────────
+
+/**
+ * Create a dependency: taskId depends on dependsOnTaskId.
+ * POST /tasks/:taskId/dependencies
+ */
+export async function createDependency(taskId, dependsOnTaskId) {
+  const response = await API.post(`/tasks/${taskId}/dependencies`, {
+    depends_on_task_id: dependsOnTaskId,
+  });
+  return response.data;
+}
+
+/**
+ * Fetch all dependencies for a task.
+ * GET /tasks/:taskId/dependencies
+ */
+export async function getDependencies(taskId) {
+  const response = await API.get(`/tasks/${taskId}/dependencies`);
+  return response.data;
+}
+
+/**
+ * Delete a dependency.
+ * DELETE /dependencies/:dependencyId
+ */
+export async function deleteDependency(dependencyId) {
+  const response = await API.delete(`/dependencies/${dependencyId}`);
+  return response.data;
+}

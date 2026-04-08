@@ -26,3 +26,12 @@ export async function getProjectById(id) {
   const response = await API.get(`/projects/${id}`);
   return response.data;
 }
+
+/**
+ * Fetch project report analytics.
+ * GET /projects/:id/report
+ */
+export async function getProjectReport(id) {
+  const response = await API.get(`/projects/${id}/report`);
+  return response.data;
+}
