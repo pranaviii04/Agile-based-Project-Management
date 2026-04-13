@@ -28,6 +28,24 @@ export async function getProjectById(id) {
 }
 
 /**
+ * Update a project by ID.
+ * PUT /projects/:id
+ */
+export async function updateProject(id, data) {
+  const response = await API.put(`/projects/${id}`, data);
+  return response.data;
+}
+
+/**
+ * Delete a project by ID (admin only).
+ * DELETE /projects/:id
+ */
+export async function deleteProject(id) {
+  const response = await API.delete(`/projects/${id}`);
+  return response.data;
+}
+
+/**
  * Fetch project report analytics.
  * GET /projects/:id/report
  */

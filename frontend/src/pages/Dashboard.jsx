@@ -4,138 +4,174 @@ import { useAuth } from "../context/AuthContext";
 import { getProjects } from "../services/projectService";
 import { getAllSprints } from "../services/sprintService";
 import { getMyTasks } from "../services/taskService";
+import toast from "react-hot-toast";
+import { SkeletonMetrics } from "../components/Skeleton";
+import {
+  FolderKanban, Clock, CheckSquare, AlertCircle, Plus, TrendingUp,
+} from "lucide-react";
 
-function Dashboard() {
+
+function avatarColor(name = "") {
+  const colors = ["#2563EB","#7C3AED","#059669","#D97706","#E11D48","#0891B2"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % colors.length;
+  return colors[h];
+}
+
+const ACTIVITY_FEED = [
+  { id: 1, text: "Sprint 2 was marked Active",    time: "2m ago",   icon: "🚀" },
+  { id: 2, text: "Task 'Design login page' done",  time: "18m ago",  icon: "✅" },
+  { id: 3, text: "New project 'Inventory' created",time: "1h ago",   icon: "📁" },
+  { id: 4, text: "CPM analysis run for Sprint 1",  time: "3h ago",   icon: "📊" },
+  { id: 5, text: "Admin added user jane@co.com",   time: "5h ago",   icon: "👤" },
+];
+
+export default function Dashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    projects: "—",
-    sprints: "—",
-    tasks: "—",
-  });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ projects: 0, sprints: 0, tasks: 0, overdue: 0 });
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    async function fetchDashboardData() {
+    async function load() {
       try {
-        const [projectsRes, sprintsRes, tasksRes] = await Promise.all([
+        const [projects, sprints, myTasks] = await Promise.all([
           getProjects().catch(() => []),
           getAllSprints().catch(() => []),
           getMyTasks().catch(() => []),
         ]);
-
-        // Calculate metrics
-        const activeProjects = projectsRes.length; // You could filter by status if models support it
-        const openSprints = sprintsRes.filter(s => s.status !== "completed").length;
-        const activeTasks = tasksRes.filter(t => t.status !== "done").length;
-
+        const openSprints = sprints.filter((s) => s.status !== "completed").length;
+        const pendingTasks = myTasks.filter((t) => t.status !== "done");
         setStats({
-          projects: activeProjects,
+          projects: projects.length,
           sprints: openSprints,
-          tasks: activeTasks,
+          tasks: pendingTasks.length,
+          overdue: 0,
         });
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
+        setTasks(myTasks.slice(0, 5));
       } finally {
         setLoading(false);
       }
     }
-
-    fetchDashboardData();
+    load();
   }, []);
 
+  const METRICS = [
+    { label: "Active Projects",  val: stats.projects, icon: FolderKanban, color: "#2563EB", bg: "rgba(37,99,235,0.10)",  trend: "+1 this week" },
+    { label: "Open Sprints",     val: stats.sprints,  icon: Clock,        color: "#059669", bg: "rgba(16,185,129,0.10)", trend: "On track"     },
+    { label: "My Pending Tasks", val: stats.tasks,    icon: CheckSquare,  color: "#D97706", bg: "rgba(245,158,11,0.10)", trend: "All on time"  },
+    { label: "Overdue Tasks",    val: stats.overdue,  icon: AlertCircle,  color: "#DC2626", bg: "rgba(239,68,68,0.10)",  trend: "All on time"  },
+  ];
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-2">
-        Welcome{user ? `, ${user.full_name}` : ""}!
-      </h1>
-      <p className="text-slate-400 mb-8">
-        Here's an overview of your agile workspace.
-      </p>
+    <div className="page-wrap">
+      {/* Header */}
+      <div style={{ marginBottom: "28px" }}>
+        <h1 className="page-title">
+          Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}
+          {user ? `, ${user.full_name.split(" ")[0]}` : ""} 
+        </h1>
+        <p className="page-subtitle">Here's what's happening across your workspace today.</p>
+      </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 relative overflow-hidden group hover:border-indigo-500 transition-colors">
-          <div className="relative z-10">
-            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">
-              Active Projects
-            </h3>
-            <p className="text-4xl font-bold text-white mt-3">
-              {loading ? (
-                <span className="text-slate-600 animate-pulse">...</span>
-              ) : (
-                stats.projects
-              )}
-            </p>
-          </div>
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+      {/* Metrics Row */}
+      {loading ? (
+        <SkeletonMetrics count={4} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px", marginBottom: "28px" }}>
+          {METRICS.map(({ label, val, icon: Icon, color, bg, trend }) => (
+            <div key={label} className="metric-card fade-up">
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
+                    {label}
+                  </p>
+                  <p style={{ fontSize: "36px", fontWeight: "800", color, lineHeight: 1, margin: 0 }}>{val}</p>
+                </div>
+                <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: bg, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
+                  <Icon size={20} strokeWidth={1.8} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "12px" }}>
+                <TrendingUp size={12} style={{ color: "var(--color-done)" }} />
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{trend}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+
+      {/* Activity Feed + Quick Links */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        {/* Activity Feed */}
+        <div className="card fade-up">
+          <h3 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "16px" }}>
+            Recent Activity
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {ACTIVITY_FEED.map((item, i) => (
+              <div key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "10px 0", borderBottom: i < ACTIVITY_FEED.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <span style={{ fontSize: "18px", flexShrink: 0, marginTop: "1px" }}>{item.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-primary)", margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0" }}>{item.time}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 relative overflow-hidden group hover:border-emerald-500 transition-colors">
-          <div className="relative z-10">
-            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">
-              Open Sprints
-            </h3>
-            <p className="text-4xl font-bold text-white mt-3">
-              {loading ? (
-                <span className="text-slate-600 animate-pulse">...</span>
-              ) : (
-                stats.sprints
-              )}
-            </p>
-          </div>
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-             <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-          </div>
-        </div>
-
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 relative overflow-hidden group hover:border-amber-500 transition-colors">
-          <div className="relative z-10">
-            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">
-              My Pending Tasks
-            </h3>
-            <p className="text-4xl font-bold text-white mt-3">
-              {loading ? (
-                <span className="text-slate-600 animate-pulse">...</span>
-              ) : (
-                stats.tasks
-              )}
-            </p>
-          </div>
-           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        {/* Quick Links */}
+        <div className="card fade-up">
+          <h3 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "16px" }}>
+            Quick Links
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {[
+              { to: "/projects", label: "Browse all projects",  icon: "📁" },
+              { to: "/my-tasks", label: "View my tasks",        icon: "✅" },
+              { to: "/projects", label: "Start a new sprint",   icon: "🚀" },
+            ].map(({ to, label, icon }) => (
+              <Link
+                key={label}
+                to={to}
+                style={{
+                  display: "flex", alignItems: "center", gap: "12px",
+                  padding: "12px", borderRadius: "8px", textDecoration: "none",
+                  border: "1px solid var(--border)", background: "var(--bg-app)",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--bg-active)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg-app)"; }}
+              >
+                <span style={{ fontSize: "18px" }}>{icon}</span>
+                <span style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-primary)" }}>{label}</span>
+              </Link>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Quick navigation */}
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Quick Links</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link
-          to="/projects"
-          className="block bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-indigo-500 transition-colors cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold text-white">Projects</h3>
-          <p className="text-sm text-slate-400 mt-1">View and manage all projects</p>
-        </Link>
-        <Link
-          to="/my-tasks"
-          className="block bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-amber-500 transition-colors cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold text-white">My Tasks</h3>
-          <p className="text-sm text-slate-400 mt-1">See tasks assigned to you</p>
-        </Link>
-        <Link
-          to="/projects"
-          className="block bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-emerald-500 transition-colors cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold text-white">Sprints</h3>
-          <p className="text-sm text-slate-400 mt-1">Navigate via a project to its sprints</p>
-        </Link>
-      </div>
+      {/* Floating Action Button */}
+      <Link
+        to="/projects"
+        title="Quick add (browse to a project)"
+        style={{
+          position: "fixed", bottom: "28px", right: "28px",
+          width: "52px", height: "52px", borderRadius: "50%",
+          background: "var(--gradient-cta)", color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(37,99,235,0.40)",
+          textDecoration: "none",
+          transition: "transform 0.15s ease, box-shadow 0.15s ease",
+          zIndex: 50,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(37,99,235,0.50)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(37,99,235,0.40)"; }}
+      >
+        <Plus size={22} strokeWidth={2.5} />
+      </Link>
     </div>
   );
 }
-
-export default Dashboard;

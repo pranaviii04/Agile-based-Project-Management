@@ -13,20 +13,49 @@ function ProjectCard({ project }) {
     <button
       type="button"
       onClick={() => navigate(`/projects/${project.id}`)}
-      className="w-full text-left bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-indigo-500 transition-colors cursor-pointer"
+      className="card fade-up"
+      style={{ width: "100%", textAlign: "left", cursor: "pointer", border: "none", padding: "24px 28px" }}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-white truncate">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h3
+            style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              color: "var(--text-primary)",
+              margin: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {project.name}
           </h3>
           {project.description && (
-            <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+            <p
+              style={{
+                fontSize: "14px",
+                color: "var(--text-secondary)",
+                marginTop: "6px",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
               {project.description}
             </p>
           )}
         </div>
-        <span className="shrink-0 text-xs text-slate-500 mt-1">
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: "12px",
+            color: "var(--text-muted)",
+            marginTop: "2px",
+            whiteSpace: "nowrap",
+          }}
+        >
           {formattedDate}
         </span>
       </div>

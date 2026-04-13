@@ -1,389 +1,292 @@
 import { useState, useEffect } from "react";
 import API from "../api/axios";
+import toast from "react-hot-toast";
+import Modal from "../components/Modal";
+import { SkeletonRow } from "../components/Skeleton";
+import { Plus, MoreHorizontal, Shield } from "lucide-react";
 
 const ROLES = [
-  { value: "admin", label: "Admin" },
+  { value: "admin",        label: "Admin" },
   { value: "scrum_master", label: "Scrum Master" },
-  { value: "team_member", label: "Team Member" },
+  { value: "team_member",  label: "Team Member" },
 ];
 
-function AdminPanel() {
-  // ── User list state ──────────────────────────────────────────
+const ROLE_BADGE = {
+  admin:        "badge-red",
+  scrum_master: "badge-amber",
+  team_member:  "badge-green",
+};
+
+function avatarColor(name = "") {
+  const colors = ["#2563EB","#7C3AED","#059669","#D97706","#E11D48","#0891B2"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % colors.length;
+  return colors[h];
+}
+
+function ActionsMenu({ user, onResetPW, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="icon-btn"
+        style={{ width: "30px", height: "30px", borderRadius: "6px" }}
+      >
+        <MoreHorizontal size={15} />
+      </button>
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: "absolute", right: 0, top: "34px", zIndex: 20,
+            background: "var(--bg-surface)", border: "1px solid var(--border)",
+            borderRadius: "10px", boxShadow: "var(--shadow-md)", minWidth: "140px", overflow: "hidden",
+          }}>
+            {[
+              { label: "Reset Password", action: () => { onResetPW(); setOpen(false); }, color: "var(--text-secondary)" },
+              { label: "Delete User",    action: () => { onDelete();  setOpen(false); }, color: "#DC2626" },
+            ].map(({ label, action, color }) => (
+              <button
+                key={label}
+                onClick={action}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", background: "none", cursor: "pointer", fontSize: "13px", color, fontFamily: "inherit", transition: "background 0.1s ease" }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function AdminPanel() {
   const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [usersError, setUsersError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // ── Create user form state ───────────────────────────────────
-  const [form, setForm] = useState({
-    email: "",
-    full_name: "",
-    password: "",
-    role: "team_member",
-  });
+  // Create user modal
+  const [createModal, setCreateModal] = useState(false);
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "team_member" });
   const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [createSuccess, setCreateSuccess] = useState("");
 
-  // ── Role update state ────────────────────────────────────────
-  const [updatingRoleId, setUpdatingRoleId] = useState(null);
-
-  // ── Password reset state ─────────────────────────────────────
-  const [resetModal, setResetModal] = useState(null); // { id, full_name, email }
-  const [newPassword, setNewPassword] = useState("");
+  // Reset PW modal
+  const [resetModal, setResetModal] = useState(null);
+  const [newPW, setNewPW] = useState("");
   const [resetting, setResetting] = useState(false);
-  const [resetError, setResetError] = useState("");
-  const [resetSuccess, setResetSuccess] = useState("");
 
-  // ── Load users on mount ──────────────────────────────────────
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    setUsersError("");
+  async function fetchUsers() {
+    setLoading(true);
     try {
       const res = await API.get("/users/");
       setUsers(res.data);
-    } catch (err) {
-      setUsersError(
-        err.response?.data?.detail || "Failed to load users."
-      );
+    } catch {
+      toast.error("Failed to load users.");
     } finally {
-      setLoadingUsers(false);
+      setLoading(false);
     }
-  };
+  }
 
-  // ── Create user ──────────────────────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
-    setCreateError("");
-    setCreateSuccess("");
-
     try {
       await API.post("/auth/register", form);
-      setCreateSuccess(`User "${form.email}" created successfully.`);
+      toast.success(`User "${form.email}" created.`);
       setForm({ email: "", full_name: "", password: "", role: "team_member" });
+      setCreateModal(false);
       fetchUsers();
     } catch (err) {
-      setCreateError(
-        err.response?.data?.detail || "Failed to create user."
-      );
+      toast.error(err.response?.data?.detail || "Failed to create user.");
     } finally {
       setCreating(false);
     }
   };
 
-  // ── Update role ──────────────────────────────────────────────
-  const handleRoleChange = async (userId, newRole) => {
-    setUpdatingRoleId(userId);
+  const handleRoleChange = async (userId, role) => {
     try {
-      await API.patch(`/users/${userId}/role`, { role: newRole });
+      await API.patch(`/users/${userId}/role`, { role });
+      toast.success("Role updated.");
       fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to update role.");
-    } finally {
-      setUpdatingRoleId(null);
+      toast.error(err.response?.data?.detail || "Failed to update role.");
     }
   };
 
-  // ── Delete user ────────────────────────────────────────────────
-  const handleDeleteUser = async (userId, email) => {
-    if (!window.confirm(`Are you sure you want to delete "${email}"? This cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = async (userId, email) => {
+    if (!window.confirm(`Delete user "${email}"? This cannot be undone.`)) return;
     try {
       await API.delete(`/users/${userId}`);
+      toast.success(`User "${email}" deleted.`);
       fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to delete user.");
+      toast.error(err.response?.data?.detail || "Failed to delete user.");
     }
   };
 
-  // ── Reset password ───────────────────────────────────────────
-  const openResetModal = (user) => {
-    setResetModal({ id: user.id, full_name: user.full_name, email: user.email });
-    setNewPassword("");
-    setResetError("");
-    setResetSuccess("");
-  };
-
-  const handleResetPassword = async (e) => {
+  const handleResetPW = async (e) => {
     e.preventDefault();
     setResetting(true);
-    setResetError("");
-    setResetSuccess("");
-
     try {
-      await API.patch(`/users/${resetModal.id}/password`, {
-        new_password: newPassword,
-      });
-      setResetSuccess(`Password reset successfully for ${resetModal.email}.`);
-      setNewPassword("");
-      // Close modal after a brief delay so user sees the success message
-      setTimeout(() => setResetModal(null), 1500);
+      await API.patch(`/users/${resetModal.id}/password`, { new_password: newPW });
+      toast.success(`Password reset for ${resetModal.email}.`);
+      setResetModal(null); setNewPW("");
     } catch (err) {
-      setResetError(
-        err.response?.data?.detail || "Failed to reset password."
-      );
+      toast.error(err.response?.data?.detail || "Failed to reset password.");
     } finally {
       setResetting(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-2">Admin Panel</h1>
-      <p className="text-slate-400 mb-8">
-        Manage users, assign roles, and create new accounts.
-      </p>
-
-      {/* ── Create User Form ─────────────────────────────────── */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-10">
-        <h2 className="text-xl font-semibold text-white mb-5">Create New User</h2>
-
-        {createError && (
-          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
-            {createError}
+    <div className="page-wrap">
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "28px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "2px" }}>
+            <Shield size={22} style={{ color: "var(--accent)" }} />
+            <h1 className="page-title" style={{ margin: 0 }}>Admin Panel</h1>
           </div>
-        )}
-        {createSuccess && (
-          <div className="mb-4 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm text-emerald-400">
-            {createSuccess}
-          </div>
-        )}
+          <p className="page-subtitle">Manage users, roles, and workspace access.</p>
+        </div>
+        <button onClick={() => setCreateModal(true)} className="btn-primary">
+          <Plus size={15} /> Create User
+        </button>
+      </div>
 
-        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Users Table */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i}><td colSpan={5} style={{ padding: 0 }}><SkeletonRow /></td></tr>
+              ))
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
+                  No users found.
+                </td>
+              </tr>
+            ) : users.map((u) => {
+              const initials = u.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+              const color = avatarColor(u.full_name);
+              return (
+                <tr key={u.id}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color: "#fff", flexShrink: 0 }}>
+                        {initials}
+                      </div>
+                      <span style={{ fontWeight: "600", color: "var(--text-primary)", fontSize: "14px" }}>{u.full_name}</span>
+                    </div>
+                  </td>
+                  <td>{u.email}</td>
+                  <td>
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="input"
+                      style={{ width: "auto", padding: "4px 8px", fontSize: "12px" }}
+                    >
+                      {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <span className={`badge ${u.is_active ? "badge-green" : "badge-red"}`}>
+                      {u.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td>
+                    <ActionsMenu
+                      user={u}
+                      onResetPW={() => setResetModal({ id: u.id, email: u.email, full_name: u.full_name })}
+                      onDelete={() => handleDelete(u.id, u.email)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Create User Modal */}
+      <Modal
+        open={createModal}
+        onClose={() => { setCreateModal(false); setForm({ email: "", full_name: "", password: "", role: "team_member" }); }}
+        title="Create New User"
+        footer={
+          <>
+            <button type="submit" form="create-user-form" disabled={creating} className="btn-primary">
+              {creating ? <><span className="spinner" style={{ marginRight: "6px" }} />Creating…</> : "Create User"}
+            </button>
+            <button onClick={() => setCreateModal(false)} className="btn-ghost">Cancel</button>
+          </>
+        }
+      >
+        <form id="create-user-form" onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div>
-            <label htmlFor="create-name" className="block text-sm font-medium text-slate-300 mb-1">
-              Full Name
-            </label>
-            <input
-              id="create-name"
-              type="text"
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              placeholder="Jane Doe"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              required
-              disabled={creating}
-            />
+            <label className="form-label">Full Name</label>
+            <input type="text" required className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" disabled={creating} />
           </div>
-
           <div>
-            <label htmlFor="create-email" className="block text-sm font-medium text-slate-300 mb-1">
-              Email
-            </label>
-            <input
-              id="create-email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="jane@company.com"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              required
-              disabled={creating}
-            />
+            <label className="form-label">Email</label>
+            <input type="email" required className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="jane@company.com" disabled={creating} />
           </div>
-
           <div>
-            <label htmlFor="create-password" className="block text-sm font-medium text-slate-300 mb-1">
-              Password
-            </label>
-            <input
-              id="create-password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Min 6 characters"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              required
-              minLength={6}
-              disabled={creating}
-            />
+            <label className="form-label">Password</label>
+            <input type="password" required minLength={6} className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 6 characters" disabled={creating} />
           </div>
-
           <div>
-            <label htmlFor="create-role" className="block text-sm font-medium text-slate-300 mb-1">
-              Role
-            </label>
-            <select
-              id="create-role"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              disabled={creating}
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
+            <label className="form-label">Role</label>
+            <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} disabled={creating}>
+              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
-
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={creating}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {creating ? "Creating…" : "Create User"}
-            </button>
-          </div>
         </form>
-      </section>
+      </Modal>
 
-      {/* ── Users Table ──────────────────────────────────────── */}
-      <section>
-        <h2 className="text-xl font-semibold text-white mb-5">All Users</h2>
-
-        {usersError && (
-          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
-            {usersError}
-          </div>
-        )}
-
-        {loadingUsers ? (
-          <p className="text-slate-400">Loading users…</p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
-            <table className="w-full text-left">
-              <thead className="bg-slate-900">
-                <tr>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">ID</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {users.map((u) => (
-                  <tr key={u.id} className="bg-slate-950 hover:bg-slate-900 transition-colors">
-                    <td className="px-5 py-4 text-sm text-slate-300">{u.id}</td>
-                    <td className="px-5 py-4 text-sm font-medium text-white">{u.full_name}</td>
-                    <td className="px-5 py-4 text-sm text-slate-300">{u.email}</td>
-                    <td className="px-5 py-4">
-                      <select
-                        value={u.role}
-                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                        disabled={updatingRoleId === u.id}
-                        className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition disabled:opacity-50"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r.value} value={r.value}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${
-                          u.is_active
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : "bg-red-500/15 text-red-400"
-                        }`}
-                      >
-                        {u.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openResetModal(u)}
-                          className="px-3 py-1.5 text-xs font-medium bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 rounded-lg transition-colors cursor-pointer"
-                        >
-                          Reset Password
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(u.id, u.email)}
-                          className="px-3 py-1.5 text-xs font-medium bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
-                      No users found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* ── Reset Password Modal ─────────────────────────────── */}
-      {resetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-1">
-              Reset Password
-            </h3>
-            <p className="text-sm text-slate-400 mb-5">
-              Set a new password for <span className="text-white font-medium">{resetModal.full_name}</span>{" "}
-              ({resetModal.email})
+      {/* Reset Password Modal */}
+      <Modal
+        open={!!resetModal}
+        onClose={() => { setResetModal(null); setNewPW(""); }}
+        title="Reset Password"
+        footer={
+          <>
+            <button type="submit" form="reset-pw-form" disabled={resetting} className="btn-primary">
+              {resetting ? "Resetting…" : "Reset Password"}
+            </button>
+            <button onClick={() => setResetModal(null)} className="btn-ghost">Cancel</button>
+          </>
+        }
+      >
+        {resetModal && (
+          <>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "16px" }}>
+              Set a new password for <strong style={{ color: "var(--text-primary)" }}>{resetModal.full_name}</strong> ({resetModal.email})
             </p>
-
-            {resetError && (
-              <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
-                {resetError}
-              </div>
-            )}
-            {resetSuccess && (
-              <div className="mb-4 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm text-emerald-400">
-                {resetSuccess}
-              </div>
-            )}
-
-            <form onSubmit={handleResetPassword}>
-              <label htmlFor="reset-password" className="block text-sm font-medium text-slate-300 mb-1">
-                New Password
-              </label>
-              <input
-                id="reset-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition mb-5"
-                required
-                minLength={6}
-                disabled={resetting}
-                autoFocus
-              />
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={resetting}
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resetting ? "Resetting…" : "Reset Password"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResetModal(null)}
-                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
+            <form id="reset-pw-form" onSubmit={handleResetPW}>
+              <label className="form-label">New Password</label>
+              <input type="password" required minLength={6} autoFocus className="input" value={newPW} onChange={(e) => setNewPW(e.target.value)} placeholder="Min. 6 characters" disabled={resetting} />
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
-
-export default AdminPanel;

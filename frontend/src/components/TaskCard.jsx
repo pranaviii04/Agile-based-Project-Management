@@ -6,18 +6,18 @@ const STATUS_OPTIONS = [
   { value: "done", label: "Done" },
 ];
 
-const STATUS_STYLES = {
-  done: "bg-emerald-500/15 text-emerald-400",
-  in_progress: "bg-amber-500/15 text-amber-400",
-  todo: "bg-slate-700/50 text-slate-400",
+const STATUS_CONFIG = {
+  done:        { bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.22)",  color: "#059669" },
+  in_progress: { bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.22)",  color: "#B45309" },
+  todo:        { bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.20)", color: "var(--text-muted)" },
 };
 
 const PRIORITY_LABELS = {
-  1: { text: "Low", color: "text-slate-500" },
-  2: { text: "Medium", color: "text-blue-400" },
-  3: { text: "High", color: "text-amber-400" },
-  4: { text: "Urgent", color: "text-orange-400" },
-  5: { text: "Critical", color: "text-red-400" },
+  1: { text: "Low",      color: "#94A3B8" },
+  2: { text: "Medium",   color: "#3B82F6" },
+  3: { text: "High",     color: "#F59E0B" },
+  4: { text: "Urgent",   color: "#F97316" },
+  5: { text: "Critical", color: "#EF4444" },
 };
 
 /**
@@ -104,35 +104,79 @@ function TaskCard({
     }
   };
 
+  const statusStyle = STATUS_CONFIG[task.status] || STATUS_CONFIG.todo;
+
   return (
-    <div className={`bg-slate-800 border rounded-xl p-5 ${isCritical ? 'border-red-500/60 border-l-4' : 'border-slate-700'}`}>
+    <div
+      className="card"
+      style={{
+        padding: "20px 24px",
+        borderLeft: isCritical ? "4px solid rgba(239,68,68,0.55)" : undefined,
+      }}
+    >
       {/* Main row: task info + status */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-white truncate">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h3
+            style={{
+              fontSize: "15px",
+              fontWeight: "600",
+              color: "var(--text-primary)",
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
             {task.name}
             {isCritical && (
-              <span className="ml-2 px-1.5 py-0.5 bg-red-500/15 text-red-400 text-[10px] font-bold uppercase rounded align-middle">
+              <span
+                style={{
+                  padding: "2px 8px",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.22)",
+                  color: "#DC2626",
+                  fontSize: "10px",
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  borderRadius: "4px",
+                }}
+              >
                 Critical
               </span>
             )}
           </h3>
           {task.description && (
-            <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+            <p
+              style={{
+                fontSize: "13px",
+                color: "var(--text-secondary)",
+                marginTop: "5px",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
               {task.description}
             </p>
           )}
-          <div className="flex items-center gap-4 mt-3">
-            <span className="text-xs text-slate-500">
-              Duration: <span className="text-slate-300">{task.duration}d</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "10px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+              Duration:{" "}
+              <span style={{ color: "var(--text-secondary)", fontWeight: "500" }}>
+                {task.duration}d
+              </span>
             </span>
-            <span className={`text-xs ${priority.color}`}>
-              Priority: {priority.text}
+            <span style={{ fontSize: "12px", color: priority.color, fontWeight: "500" }}>
+              {priority.text} Priority
             </span>
             {task.assigned_to && (
-              <span className="text-xs text-slate-500">
+              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                 Assigned:{" "}
-                <span className="text-slate-300">
+                <span style={{ color: "var(--text-secondary)", fontWeight: "500" }}>
                   {systemUsers.find((u) => u.id === task.assigned_to)
                     ?.full_name || `#${task.assigned_to}`}
                 </span>
@@ -141,13 +185,23 @@ function TaskCard({
           </div>
         </div>
 
-        <div className="relative shrink-0 group">
+        {/* Status select */}
+        <div style={{ position: "relative", flexShrink: 0 }}>
           <select
             value={task.status}
             onChange={handleStatusChange}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer ${
-              STATUS_STYLES[task.status] || STATUS_STYLES.todo
-            }`}
+            style={{
+              padding: "6px 12px",
+              fontSize: "12px",
+              fontWeight: "600",
+              borderRadius: "8px",
+              border: `1px solid ${statusStyle.border}`,
+              background: statusStyle.bg,
+              color: statusStyle.color,
+              outline: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
           >
             {STATUS_OPTIONS.map((s) => (
               <option
@@ -160,7 +214,17 @@ function TaskCard({
             ))}
           </select>
           {!canMarkDone && (
-            <span className="absolute -bottom-5 right-0 text-[10px] text-amber-400/70 whitespace-nowrap pointer-events-none">
+            <span
+              style={{
+                position: "absolute",
+                bottom: "-18px",
+                right: 0,
+                fontSize: "10px",
+                color: "#F59E0B",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+              }}
+            >
               Complete dependencies first
             </span>
           )}
@@ -169,17 +233,23 @@ function TaskCard({
 
       {/* Status error banner */}
       {statusError && (
-        <div className="mt-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-          <p className="text-xs text-red-400">{statusError}</p>
+        <div className="alert-error" style={{ marginTop: "10px", fontSize: "13px" }}>
+          {statusError}
         </div>
       )}
 
       {/* Dependencies section */}
-      <div className="mt-3 pt-3 border-t border-slate-700/50">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-500">Depends on:</span>
+      <div
+        style={{
+          marginTop: "14px",
+          paddingTop: "14px",
+          borderTop: "1px solid var(--border-subtle)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Depends on:</span>
           {taskDeps.deps.length === 0 ? (
-            <span className="text-xs text-slate-600 italic">None</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>None</span>
           ) : (
             taskDeps.deps.map((dep) => {
               const depTask = allTasks.find(
@@ -189,20 +259,41 @@ function TaskCard({
               return (
                 <span
                   key={dep.id}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                    isDepDone
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : "bg-slate-700 text-slate-300"
-                  }`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "2px 8px",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    background: isDepDone
+                      ? "rgba(16,185,129,0.08)"
+                      : "var(--bg-hover)",
+                    color: isDepDone ? "#059669" : "var(--text-secondary)",
+                    border: isDepDone
+                      ? "1px solid rgba(16,185,129,0.20)"
+                      : "1px solid var(--border-subtle)",
+                  }}
                 >
-                  {isDepDone && <span className="text-emerald-400">✓</span>}
+                  {isDepDone && <span style={{ color: "#059669" }}>✓</span>}
                   {depTask ? depTask.name : dep.depends_on_task_id.slice(0, 8)}
                   {onRemoveDependency && (
                     <button
                       type="button"
                       onClick={() => handleRemoveDep(dep.id)}
-                      className="text-slate-500 hover:text-red-400 transition-colors cursor-pointer ml-0.5"
                       title="Remove dependency"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--text-muted)",
+                        fontSize: "14px",
+                        lineHeight: 1,
+                        padding: "0 0 0 2px",
+                        transition: "color 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.target.style.color = "#DC2626")}
+                      onMouseLeave={(e) => (e.target.style.color = "var(--text-muted)")}
                     >
                       ×
                     </button>
@@ -219,7 +310,16 @@ function TaskCard({
                 setShowDepForm(!showDepForm);
                 setDepError("");
               }}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "12px",
+                color: "var(--accent-blue-light)",
+                fontWeight: "600",
+                padding: 0,
+                transition: "color 0.2s",
+              }}
             >
               {showDepForm ? "Cancel" : "+ Add"}
             </button>
@@ -228,11 +328,12 @@ function TaskCard({
 
         {/* Add dependency inline form */}
         {showDepForm && (
-          <div className="mt-2 flex items-center gap-2">
+          <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
             <select
               value={selectedDep}
               onChange={(e) => setSelectedDep(e.target.value)}
-              className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className="input"
+              style={{ flex: 1, padding: "8px 12px" }}
               disabled={adding}
             >
               <option value="">Select a task…</option>
@@ -246,7 +347,8 @@ function TaskCard({
               type="button"
               onClick={handleAddDep}
               disabled={!selectedDep || adding}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary"
+              style={{ padding: "8px 16px", fontSize: "13px", flexShrink: 0 }}
             >
               {adding ? "Adding…" : "Add"}
             </button>
@@ -254,7 +356,7 @@ function TaskCard({
         )}
 
         {depError && (
-          <p className="mt-1 text-xs text-red-400">{depError}</p>
+          <p style={{ marginTop: "6px", fontSize: "12px", color: "#DC2626" }}>{depError}</p>
         )}
       </div>
     </div>
