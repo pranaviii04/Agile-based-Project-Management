@@ -59,9 +59,9 @@ def _seed_admin():
             )
             db.add(admin)
             db.commit()
-            print("✅ Default admin created: admin@agilepm.com / admin123")
+            print("[OK] Default admin created: admin@agilepm.com / admin123")
         else:
-            print("ℹ️  Admin user already exists — skipping seed.")
+            print("[INFO] Admin user already exists -- skipping seed.")
     finally:
         db.close()
 

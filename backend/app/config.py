@@ -4,6 +4,10 @@ Application Configuration
 Loads settings from environment variables (or a .env file).
 All sensitive values (DB URL, JWT secret) live here so they are
 easy to change without touching code.
+
+To override any value without editing this file, either:
+  - Set an environment variable before starting the server, or
+  - Create a file called .env in the backend/ directory.
 """
 
 from pydantic_settings import BaseSettings
@@ -11,7 +15,12 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/agile_pm"
+    # Supabase-hosted PostgreSQL connection string.
+    # Format: postgresql://<user>:<password>@<host>:<port>/<dbname>?sslmode=require
+    # sslmode=require is mandatory for Supabase — they reject unencrypted connections.
+    DATABASE_URL: str = (
+        "postgresql://postgres:agile-db-sw@db.aklehdseeaejdselozhz.supabase.co:5432/postgres?sslmode=require"
+    )
 
     # ── JWT ───────────────────────────────────────────────────
     SECRET_KEY: str = "super-secret-change-me-in-production"
@@ -22,5 +31,5 @@ class Settings(BaseSettings):
         env_file = ".env"  # optional .env file in the backend/ folder
 
 
-# Single, reusable settings instance
+# Single, reusable settings instance used throughout the app
 settings = Settings()
