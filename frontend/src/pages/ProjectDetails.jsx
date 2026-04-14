@@ -311,7 +311,7 @@ export default function ProjectDetails() {
         <form id="create-sprint-form" onSubmit={handleCreateSprint} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label className="form-label">Sprint Name</label>
-            <input type="text" required value={sprintForm.name} onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })} placeholder="e.g. Sprint 1" className="input" disabled={creating} />
+            <input type="text" required autoFocus value={sprintForm.name} onChange={(e) => setSprintForm({ ...sprintForm, name: e.target.value })} placeholder="e.g. Sprint 1" className="input" disabled={creating} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>

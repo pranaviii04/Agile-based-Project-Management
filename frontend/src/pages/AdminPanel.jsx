@@ -244,7 +244,7 @@ export default function AdminPanel() {
         <form id="create-user-form" onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div>
             <label className="form-label">Full Name</label>
-            <input type="text" required className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" disabled={creating} />
+            <input type="text" required autoFocus className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Jane Doe" disabled={creating} />
           </div>
           <div>
             <label className="form-label">Email</label>

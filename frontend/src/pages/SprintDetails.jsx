@@ -405,7 +405,7 @@ export default function SprintDetails() {
         <form id="create-task-form" onSubmit={handleCreateTask} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div>
             <label className="form-label">Task Name</label>
-            <input type="text" required className="input" value={taskForm.name} onChange={(e) => setTaskForm({ ...taskForm, name: e.target.value })} placeholder="e.g. Design login page" disabled={creating} />
+            <input type="text" required autoFocus className="input" value={taskForm.name} onChange={(e) => setTaskForm({ ...taskForm, name: e.target.value })} placeholder="e.g. Design login page" disabled={creating} />
           </div>
           <div>
             <label className="form-label">Description <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>

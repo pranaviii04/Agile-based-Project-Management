@@ -231,7 +231,7 @@ export default function Projects() {
         <form id="create-project-form" onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label className="form-label" htmlFor="proj-name">Project Name</label>
-            <input id="proj-name" type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint Board Alpha" className="input" disabled={creating} />
+            <input id="proj-name" type="text" required autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint Board Alpha" className="input" disabled={creating} />
           </div>
           <div>
             <label className="form-label" htmlFor="proj-desc">Description <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>

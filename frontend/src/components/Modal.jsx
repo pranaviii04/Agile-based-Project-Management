@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { X } from "lucide-react";
 
 /**
@@ -11,12 +11,9 @@ import { X } from "lucide-react";
  * @param {string}    props.maxWidth - e.g. "520px"
  */
 function Modal({ open, onClose, title, children, footer, maxWidth = "480px" }) {
-  const firstFocusable = useRef(null);
-
-  // Esc to close + focus trap
+  // Esc to close
   useEffect(() => {
     if (!open) return;
-    firstFocusable.current?.focus();
     const handler = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -40,7 +37,6 @@ function Modal({ open, onClose, title, children, footer, maxWidth = "480px" }) {
         <div className="modal-header">
           <h2
             id="modal-title"
-            ref={firstFocusable}
             tabIndex={-1}
             style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)", margin: 0 }}
           >
