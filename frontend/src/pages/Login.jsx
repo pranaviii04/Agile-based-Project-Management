@@ -58,9 +58,9 @@ export default function Login() {
       <div style={{ width: "100%", maxWidth: "400px" }}>
         {/* Logo */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "32px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--gradient-cta)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px", boxShadow: "0 4px 16px rgba(37,99,235,0.30)" }}>
+          {/* <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--gradient-cta)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px", boxShadow: "0 4px 16px rgba(37,99,235,0.30)" }}>
             <Zap size={24} strokeWidth={2.5} color="#fff" />
-          </div>
+          </div> */}
           <h1 style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-primary)", margin: 0, letterSpacing: "-0.025em" }}>
             Agile<span style={{ color: "var(--accent)" }}>PM</span>
           </h1>

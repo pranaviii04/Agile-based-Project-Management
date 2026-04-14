@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -10,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useState, useEffect } from "react"; // ← added
 
 const NAV_ITEMS = [
   { to: "/",         label: "Dashboard",  icon: LayoutDashboard },
@@ -25,15 +26,37 @@ function avatarColor(name = "") {
 }
 
 function Sidebar({ collapsed, onToggle }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = user?.role === "admin";
   const isSM = user?.role === "scrum_master";
+  const [showLogout, setShowLogout] = useState(false); // ← added
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
+
+  
+const handleLogout = () => {
+  logout();
+  window.location.href = "/login";
+};
+
+  // close popup when clicking outside avatar AND outside the logout popup
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        !e.target.closest(".avatar") &&
+        !e.target.closest(".logout-popup")
+      ) {
+        setShowLogout(false);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
 
   const initials = user?.full_name
     ? user.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -49,9 +72,9 @@ function Sidebar({ collapsed, onToggle }) {
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
+        {/* <div className="sidebar-logo-icon">
           <Zap size={18} strokeWidth={2.5} />
-        </div>
+        </div> */}
         <span className="sidebar-logo-text">
           Agile<span style={{ color: "var(--accent)" }}>PM</span>
         </span>
@@ -117,13 +140,56 @@ function Sidebar({ collapsed, onToggle }) {
         {/* User card */}
         {user && (
           <div className="user-card">
-            <div
-              className="avatar"
-              style={{ background: avatarColor(user.full_name) }}
-              title={user.full_name}
-            >
-              {initials}
+            <div style={{ position: "relative" }}>
+              <div
+                className="avatar"
+                style={{ background: avatarColor(user.full_name), cursor: "pointer" }}
+                title={user.full_name}
+                onClick={() => setShowLogout(!showLogout)}
+              >
+                {initials}
+              </div>
+              {showLogout && (
+                <div
+                  className="logout-popup"
+                  style={{
+                    position: "fixed",
+                    bottom: "80px",
+                    left: "60px",
+                    transform: "translateX(-50%)",
+                    background: "var(--bg-secondary, #1e2a3a)",
+                    border: "1px solid var(--border, #2e3d50)",
+                    borderRadius: "8px",
+                    padding: "6px",
+                    zIndex: 9999,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLogout();
+                    }}
+                    className="btn-primary"
+                    style={{
+                      background: "#7f1d1d",
+                      color: "#fca5a5",
+                      border: "1px solid #991b1b",
+                      borderRadius: "999px",
+                      padding: "2px 10px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
+            
+
             <div className="user-info" style={{ minWidth: 0 }}>
               <p style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-primary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user.full_name}

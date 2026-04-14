@@ -23,7 +23,7 @@ const ACTIVITY_FEED = [
   { id: 2, text: "Task 'Design login page' done",  time: "18m ago",  icon: "✅" },
   { id: 3, text: "New project 'Inventory' created",time: "1h ago",   icon: "📁" },
   { id: 4, text: "CPM analysis run for Sprint 1",  time: "3h ago",   icon: "📊" },
-  { id: 5, text: "Admin added user jane@co.com",   time: "5h ago",   icon: "👤" },
+  { id: 5, text: "Admin added user himanshu@gmail.com",   time: "5h ago",   icon: "👤" },
 ];
 
 export default function Dashboard() {

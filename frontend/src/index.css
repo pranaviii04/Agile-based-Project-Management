@@ -84,10 +84,12 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
+  height: 100%;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 body {
+  height: 100%;
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-app);
   color: var(--text-primary);
@@ -97,12 +99,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+#root {
+  height: 100%;
+}
+
 /* ═══════════════════════════════════════════════════════════
    LAYOUT
 ═══════════════════════════════════════════════════════════ */
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .main-content {
@@ -110,7 +117,9 @@ body {
   margin-left: var(--sidebar-w);
   padding-top: var(--topbar-h);
   transition: margin-left 0.2s ease;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--bg-app);
 }
 

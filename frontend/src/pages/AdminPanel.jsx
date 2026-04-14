@@ -160,8 +160,9 @@ export default function AdminPanel() {
       </div>
 
       {/* Users Table */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="data-table">
+      <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column" , maxHeight: "500px"}}>
+        <div style={{ overflowY: "auto", overflowX: "auto" }}>
+        <table className="data-table" style={{ minWidth: "600px"}}>
           <thead>
             <tr>
               <th>User</th>
@@ -223,6 +224,7 @@ export default function AdminPanel() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Create User Modal */}
